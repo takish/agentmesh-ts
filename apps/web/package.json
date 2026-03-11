@@ -1,0 +1,12 @@
+{
+  "name": "@agentmesh/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Next.js dashboard",
+  "scripts": {
+    "dev": "echo 'web: not yet implemented'",
+    "build": "echo 'web: not yet implemented'",
+    "start": "echo 'web: not yet implemented'"
+  }
+}
