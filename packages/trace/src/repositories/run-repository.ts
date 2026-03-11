@@ -53,4 +53,21 @@ export class RunRepository {
       .orderBy(runs.createdAt)
       .limit(limit);
   }
+
+  async listByParentId(parentRunId: string): Promise<RunSelect[]> {
+    return this.db
+      .select()
+      .from(runs)
+      .where(eq(runs.parentRunId, parentRunId))
+      .orderBy(runs.createdAt);
+  }
+
+  async listByWorkflowId(workflowId: string, limit = 50): Promise<RunSelect[]> {
+    return this.db
+      .select()
+      .from(runs)
+      .where(eq(runs.workflowId, workflowId))
+      .orderBy(runs.createdAt)
+      .limit(limit);
+  }
 }
