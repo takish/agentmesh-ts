@@ -43,3 +43,6 @@ export type {
   StepOutput,
   ToolCallResult,
 } from "./step-executor.js";
+
+export { RunLoop } from "./run-loop.js";
+export type { RunLoopConfig, RunLoopDeps, RunLoopResult } from "./run-loop.js";
