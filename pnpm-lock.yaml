@@ -252,6 +252,16 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/workflow:
+    dependencies:
+      '@agentmesh/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@types/node@25.4.0)(tsx@4.21.0)
+
   tests/e2e:
     devDependencies:
       '@agentmesh/core':
