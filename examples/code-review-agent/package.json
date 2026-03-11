@@ -1,0 +1,24 @@
+{
+  "name": "@agentmesh/example-code-review-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Example code review agent — reads git diff and generates review comments",
+  "dependencies": {
+    "@agentmesh/core": "workspace:*",
+    "@agentmesh/policy": "workspace:*",
+    "@agentmesh/provider-openai": "workspace:*",
+    "@agentmesh/toolkit": "workspace:*",
+    "tsx": "^4.21.0"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0"
+  }
+}

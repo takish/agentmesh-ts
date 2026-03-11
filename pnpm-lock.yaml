@@ -60,6 +60,9 @@ importers:
       '@types/node':
         specifier: ^25.4.0
         version: 25.4.0
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@types/node@25.4.0)(tsx@4.21.0)
 
   apps/web:
     dependencies:
@@ -89,6 +92,28 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  examples/code-review-agent:
+    dependencies:
+      '@agentmesh/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@agentmesh/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      '@agentmesh/provider-openai':
+        specifier: workspace:*
+        version: link:../../packages/provider-openai
+      '@agentmesh/toolkit':
+        specifier: workspace:*
+        version: link:../../packages/toolkit
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+    devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
+
   examples/research-agent:
     dependencies:
       '@agentmesh/core':
@@ -103,6 +128,25 @@ importers:
       '@agentmesh/toolkit':
         specifier: workspace:*
         version: link:../../packages/toolkit
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+    devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
+
+  examples/support-triage-agent:
+    dependencies:
+      '@agentmesh/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@agentmesh/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      '@agentmesh/provider-openai':
+        specifier: workspace:*
+        version: link:../../packages/provider-openai
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
