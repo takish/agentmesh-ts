@@ -1,0 +1,24 @@
+{
+  "name": "create-agentmesh",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "create-agentmesh": "dist/index.js"
+  },
+  "description": "Interactive setup wizard for AgentMesh projects",
+  "files": ["dist"],
+  "dependencies": {
+    "@clack/prompts": "^0.11.0"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "tsx": "^4.21.0"
+  }
+}
