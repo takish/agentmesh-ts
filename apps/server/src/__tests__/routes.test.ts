@@ -11,6 +11,8 @@ function createMockRepos() {
       updateTokensAndCost: vi.fn(),
       listByStatus: vi.fn(),
       listRecent: vi.fn(),
+      listByParentId: vi.fn(),
+      listByWorkflowId: vi.fn(),
     },
     stepRepo: {
       create: vi.fn(),
@@ -322,5 +324,65 @@ describe("POST /api/runs/:id/cancel", () => {
     const res = await app.inject({ method: "POST", url: `/api/runs/${fakeRun.id}/cancel` });
 
     expect(res.statusCode).toBe(409);
+  });
+});
+
+describe("GET /api/runs/:id/children", () => {
+  let deps: MockRepos;
+
+  beforeEach(() => {
+    deps = createMockRepos();
+  });
+
+  it("returns child runs", async () => {
+    deps.runRepo.findById.mockResolvedValue(fakeRun);
+    const childRun = { ...fakeRun, id: "run_child1", parentRunId: fakeRun.id };
+    deps.runRepo.listByParentId.mockResolvedValue([childRun]);
+    const app = buildApp(deps);
+
+    const res = await app.inject({ method: "GET", url: `/api/runs/${fakeRun.id}/children` });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toHaveLength(1);
+    expect(deps.runRepo.listByParentId).toHaveBeenCalledWith(fakeRun.id);
+  });
+
+  it("returns empty array when no children", async () => {
+    deps.runRepo.findById.mockResolvedValue(fakeRun);
+    deps.runRepo.listByParentId.mockResolvedValue([]);
+    const app = buildApp(deps);
+
+    const res = await app.inject({ method: "GET", url: `/api/runs/${fakeRun.id}/children` });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toHaveLength(0);
+  });
+
+  it("returns 404 if parent run not found", async () => {
+    deps.runRepo.findById.mockResolvedValue(undefined);
+    const app = buildApp(deps);
+
+    const res = await app.inject({ method: "GET", url: "/api/runs/nonexistent/children" });
+
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe("GET /api/runs?workflowId=", () => {
+  let deps: MockRepos;
+
+  beforeEach(() => {
+    deps = createMockRepos();
+  });
+
+  it("filters by workflowId", async () => {
+    deps.runRepo.listByWorkflowId.mockResolvedValue([fakeRun]);
+    const app = buildApp(deps);
+
+    const res = await app.inject({ method: "GET", url: "/api/runs?workflowId=wf_123" });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toHaveLength(1);
+    expect(deps.runRepo.listByWorkflowId).toHaveBeenCalledWith("wf_123", 50);
   });
 });

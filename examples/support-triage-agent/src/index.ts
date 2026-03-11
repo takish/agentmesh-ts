@@ -121,7 +121,13 @@ async function main() {
   if (lastMessage?.content) {
     console.log(`\n--- Triage Result ---`);
     try {
-      const triage = JSON.parse(lastMessage.content);
+      const triage = JSON.parse(lastMessage.content) as {
+        category: string;
+        priority: string;
+        team: string;
+        summary: string;
+        draft_reply: string;
+      };
       console.log(`   Category: ${triage.category}`);
       console.log(`   Priority: ${triage.priority}`);
       console.log(`   Route to: ${triage.team}`);

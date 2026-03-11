@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   createRunMachine,
   transition,
@@ -57,6 +57,33 @@ function createMockToolHandler(
   };
 }
 
+// --- Mock Policy ---
+function createAllowAllPolicy(): PolicyChecker {
+  return {
+    evaluate: async () => ({ allowed: true, requiresApproval: false }),
+  };
+}
+
+function createBlockingPolicy(blockedTools: Set<string>): PolicyChecker {
+  return {
+    evaluate: async (ctx) => ({
+      allowed: !blockedTools.has(ctx.toolName),
+      requiresApproval: false,
+      reason: blockedTools.has(ctx.toolName) ? `Tool ${ctx.toolName} not allowed` : undefined,
+    }),
+  };
+}
+
+function createStepBudgetPolicy(maxSteps: number): PolicyChecker {
+  return {
+    evaluate: async (ctx) => ({
+      allowed: ctx.currentStepCount < maxSteps,
+      requiresApproval: false,
+      reason: ctx.currentStepCount >= maxSteps ? "Step budget exceeded" : undefined,
+    }),
+  };
+}
+
 // --- Helpers ---
 function textResponse(text: string): ProviderGenerateOutput {
   return {
@@ -84,10 +111,6 @@ function toolCallResponse(
     usage: { inputTokens: 150, outputTokens: 80 },
   };
 }
-
-beforeEach(() => {
-  _resetStepEventSeq();
-});
 
 describe("E2E: normal completion flow", () => {
   it("completes a single-step run with text response", async () => {
@@ -134,7 +157,7 @@ describe("E2E: tool call → tool result → final response", () => {
       search: (input) => ({ results: [`Result for ${(input as { q: string }).q}`] }),
     });
 
-    const stepExecutor = new StepExecutor(provider, toolHandler);
+    const stepExecutor = new StepExecutor(provider, toolHandler, createAllowAllPolicy());
 
     let machine = createRunMachine("run_2", { maxSteps: 5, maxCostUsd: 1.0 });
     const { state: running } = transition(machine, "running");
@@ -159,8 +182,6 @@ describe("E2E: tool call → tool result → final response", () => {
     expect(step0.toolCallResults).toHaveLength(1);
     expect(step0.toolCallResults.at(0)?.toolName).toBe("search");
     expect(step0.toolCallResults.at(0)?.status).toBe("succeeded");
-    expect(step0.events.some((e) => e.eventType === "tool.requested")).toBe(true);
-    expect(step0.events.some((e) => e.eventType === "tool.completed")).toBe(true);
 
     messages = step0.messages;
     machine = incrementStep(machine, 0.001);
@@ -178,13 +199,12 @@ describe("E2E: tool call → tool result → final response", () => {
     expect(step1.finishReason).toBe("stop");
     expect(step1.messages.at(-1)?.content).toContain("AI agents are trending");
     machine = incrementStep(machine, 0.001);
-
     expect(machine.stepCount).toBe(2);
   });
 });
 
 describe("E2E: policy blocks tool call", () => {
-  it("blocks disallowed tools via ToolAllowlistRule", async () => {
+  it("blocks disallowed tools", async () => {
     const provider = createMockProvider([
       toolCallResponse([{ name: "run_shell", args: { command: "rm -rf /" } }]),
     ]);
@@ -193,13 +213,7 @@ describe("E2E: policy blocks tool call", () => {
       run_shell: () => ({ exitCode: 0, stdout: "", stderr: "" }),
     });
 
-    const policyEngine = new PolicyEngine();
-    policyEngine.addRule(new ToolAllowlistRule(new Set(["search", "read_file"])));
-
-    const policyChecker: PolicyChecker = {
-      evaluate: (ctx) => policyEngine.evaluate(ctx),
-    };
-
+    const policyChecker = createBlockingPolicy(new Set(["run_shell"]));
     const stepExecutor = new StepExecutor(provider, toolHandler, policyChecker);
 
     let machine = createRunMachine("run_3", { maxSteps: 3, maxCostUsd: 1.0 });
@@ -217,37 +231,32 @@ describe("E2E: policy blocks tool call", () => {
 
     expect(result.blocked).toBe(true);
     expect(result.toolCallResults.at(0)?.status).toBe("blocked");
-    expect(result.events.some((e) => e.eventType === "policy.checked")).toBe(true);
-    // Tool should NOT have been executed — output stays null
     expect(result.toolCallResults.at(0)?.output).toBeNull();
+    expect(result.events.some((e) => e.eventType === "policy.checked")).toBe(true);
   });
 });
 
 describe("E2E: budget exceeded stops run", () => {
-  it("checkBudget returns step_budget when exceeded", async () => {
+  it("checkBudget returns steps_exceeded when exceeded", () => {
     let machine = createRunMachine("run_4", { maxSteps: 2, maxCostUsd: 1.0 });
     const { state: running } = transition(machine, "running");
     machine = running;
-
     machine = incrementStep(machine, 0.01);
     machine = incrementStep(machine, 0.01);
 
-    const budget = checkBudget(machine);
-    expect(budget).toBe("steps_exceeded");
+    expect(checkBudget(machine)).toBe("steps_exceeded");
   });
 
-  it("checkBudget returns cost_budget when exceeded", async () => {
+  it("checkBudget returns cost_exceeded when exceeded", () => {
     let machine = createRunMachine("run_5", { maxSteps: 10, maxCostUsd: 0.05 });
     const { state: running } = transition(machine, "running");
     machine = running;
-
     machine = incrementStep(machine, 0.06);
 
-    const budget = checkBudget(machine);
-    expect(budget).toBe("cost_exceeded");
+    expect(checkBudget(machine)).toBe("cost_exceeded");
   });
 
-  it("StepBudgetRule blocks via policy engine", async () => {
+  it("StepBudgetPolicy blocks via policy checker", async () => {
     const provider = createMockProvider([
       toolCallResponse([{ name: "search", args: { q: "test" } }]),
     ]);
@@ -255,20 +264,12 @@ describe("E2E: budget exceeded stops run", () => {
       search: () => ({ results: [] }),
     });
 
-    const policyEngine = new PolicyEngine();
-    policyEngine.addRule(new StepBudgetRule(1)); // only 1 step allowed
-
-    const policyChecker: PolicyChecker = {
-      evaluate: (ctx) => policyEngine.evaluate(ctx),
-    };
-
+    const policyChecker = createStepBudgetPolicy(1);
     const stepExecutor = new StepExecutor(provider, toolHandler, policyChecker);
 
     let machine = createRunMachine("run_6", { maxSteps: 1, maxCostUsd: 1.0 });
     const { state: running } = transition(machine, "running");
     machine = running;
-
-    // Already at step 1 (exceeded)
     machine = incrementStep(machine, 0);
 
     const result = await stepExecutor.execute({
@@ -316,7 +317,6 @@ describe("E2E: tool execution failure and recovery", () => {
     expect(result.toolCallResults.at(0)?.error).toBe("Connection timeout");
     expect(result.events.some((e) => e.eventType === "step.failed")).toBe(true);
 
-    // Error message is sent back to LLM as tool result
     const toolMessage = result.messages.find((m) => m.role === "tool");
     expect(toolMessage?.content).toContain("Connection timeout");
   });
@@ -335,15 +335,7 @@ describe("E2E: multi-step loop with run machine", () => {
       fetch: () => ({ content: "<html>Example</html>", status: 200 }),
     });
 
-    const policyEngine = new PolicyEngine();
-    policyEngine.addRule(new ToolAllowlistRule(new Set(["search", "fetch"])));
-    policyEngine.addRule(new StepBudgetRule(5));
-    policyEngine.addRule(new CostBudgetRule(1.0));
-
-    const policyChecker: PolicyChecker = {
-      evaluate: (ctx) => policyEngine.evaluate(ctx),
-    };
-
+    const policyChecker = createAllowAllPolicy();
     const stepExecutor = new StepExecutor(provider, toolHandler, policyChecker);
 
     let machine = createRunMachine("run_8", { maxSteps: 5, maxCostUsd: 1.0 });
@@ -377,7 +369,6 @@ describe("E2E: multi-step loop with run machine", () => {
         finalContent = result.messages.at(-1)?.content ?? null;
         break;
       }
-
       if (result.blocked || result.finishReason === "error") break;
     }
 

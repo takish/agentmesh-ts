@@ -38,6 +38,7 @@ export { StepExecutor, _resetStepEventSeq } from "./step-executor.js";
 export type {
   ToolHandler,
   PolicyChecker,
+  RunSpawner,
   StepInput,
   StepOutput,
   ToolCallResult,
