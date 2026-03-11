@@ -161,6 +161,9 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@agentmesh/policy':
+        specifier: workspace:*
+        version: link:../policy
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@25.4.0)(tsx@4.21.0)
