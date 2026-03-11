@@ -79,9 +79,22 @@ importers:
       '@agentmesh/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@agentmesh/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      '@agentmesh/provider-openai':
+        specifier: workspace:*
+        version: link:../../packages/provider-openai
       '@agentmesh/toolkit':
         specifier: workspace:*
         version: link:../../packages/toolkit
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+    devDependencies:
+      '@types/node':
+        specifier: ^25.4.0
+        version: 25.4.0
 
   packages/core:
     dependencies:
