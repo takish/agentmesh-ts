@@ -12,6 +12,10 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }

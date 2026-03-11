@@ -59,6 +59,10 @@ importers:
       '@agentmesh/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18
 
   packages/provider-anthropic:
     dependencies:
