@@ -1,5 +1,7 @@
 # agentmesh-ts
 
+[![CI](https://github.com/takish/agentmesh-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/takish/agentmesh-ts/actions/workflows/ci.yml)
+
 ```
      █████╗  ██████╗ ███████╗███╗   ██╗████████╗
     ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
