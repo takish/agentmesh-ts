@@ -33,60 +33,95 @@ A TypeScript runtime that treats AI agent execution as a first-class engineering
 
 Most agent frameworks focus on demos. AgentMesh focuses on what happens after the demo: traceability, governance, cost control, and reproducibility. Every step is recorded. Every tool call is validated. Every policy decision is auditable.
 
-```
-User → REST API → Runtime Loop → Provider (OpenAI / Anthropic)
-                      ↓
-              Policy Engine (approve / block)
-                      ↓
-              Tool Executor (typed, scoped, timeout-aware)
-                      ↓
-              Trace Store (PostgreSQL)
-                      ↓
-              Web UI (inspect, replay, govern)
-```
-
----
-
-## Why
-
-LLM agent libraries are plentiful. Production-grade agent **runtimes** are not.
-
-| Gap | What's missing |
-|-----|---------------|
-| **Traceability** | Most agents are black boxes. You can't see what happened at step 3 of 12. |
-| **Governance** | No budget limits, no tool restrictions, no approval gates. |
-| **Reproducibility** | Can't replay a failed run with the same inputs. |
-| **Provider lock-in** | Switching from OpenAI to Anthropic means rewriting orchestration. |
-
-AgentMesh closes these gaps.
-
 ---
 
 ## Features
 
-- **Provider-agnostic** — OpenAI, Anthropic, Gemini. Same interface, swap freely.
+- **Provider-agnostic** — OpenAI, Anthropic. Same `LlmProvider` interface, swap freely.
 - **Typed tool contracts** — Zod schemas for inputs/outputs, permission scopes, side-effect levels.
-- **Step-level tracing** — Every LLM call, tool execution, and policy decision persisted.
-- **Policy engine** — Cost budgets, tool allowlists, step limits, approval gates.
-- **Replay-ready** — Re-run any execution from recorded event traces.
+- **Step-level tracing** — Every LLM call, tool execution, and policy decision persisted as events.
+- **Policy engine** — Cost budgets, tool allowlists, step limits, approval gates, dangerous action blocking.
+- **Multi-agent workflows** — DAG-based orchestration with topological parallel execution.
+- **OpenTelemetry** — Native span instrumentation across RunLoop, StepExecutor, LLM calls, and tool execution.
+- **RunLoop abstraction** — Encapsulates the full agent execution lifecycle with budget enforcement.
 - **Developer UI** — Dark-themed run timeline, cost tracking, JSON inspection.
 
 ---
 
 ## Architecture
 
+```mermaid
+graph TB
+    subgraph Client
+        UI[Web Dashboard<br/>Next.js]
+    end
+
+    subgraph API["apps/server (Fastify)"]
+        REST[REST API]
+    end
+
+    subgraph Core["@agentmesh/core"]
+        RL[RunLoop]
+        SE[StepExecutor]
+        SM[RunMachine<br/>State Machine]
+    end
+
+    subgraph Providers
+        OA["provider-openai"]
+        AN["provider-anthropic"]
+    end
+
+    subgraph Governance
+        PE["policy<br/>PolicyEngine"]
+        TK["toolkit<br/>ToolRegistry + Executor"]
+    end
+
+    subgraph Persistence
+        TR["trace<br/>PostgreSQL + Drizzle"]
+    end
+
+    subgraph Orchestration
+        WF["workflow<br/>DAG Orchestrator"]
+    end
+
+    subgraph Observability
+        OT[OpenTelemetry<br/>Spans + Events]
+    end
+
+    UI -->|HTTP| REST
+    REST --> RL
+    RL --> SE
+    SE --> SM
+    SE -->|generate| OA & AN
+    SE -->|evaluate| PE
+    SE -->|execute| TK
+    RL -.->|record| TR
+    WF -->|spawn| RL
+    SE -.->|instrument| OT
+
+    style Core fill:#1a1a2e,color:#fff
+    style Orchestration fill:#16213e,color:#fff
+    style Observability fill:#0f3460,color:#fff
+```
+
+---
+
+## Packages
+
 ```
 agentmesh-ts/
 ├── packages/
-│   ├── core/                 # Run, Step, state machine, domain events
-│   ├── toolkit/              # defineTool(), registry, executor
-│   ├── policy/               # Rules engine, approval gates
-│   ├── trace/                # Event persistence, metrics
+│   ├── core/                 # RunLoop, StepExecutor, RunMachine, domain events
+│   ├── toolkit/              # defineTool(), ToolRegistry, ToolExecutor, built-in tools
+│   ├── workflow/             # DAG validation, topological sort, WorkflowOrchestrator
+│   ├── policy/               # PolicyEngine, rules (budget, allowlist, scope, danger)
+│   ├── trace/                # Event persistence (PostgreSQL, Drizzle ORM)
 │   ├── provider-openai/      # OpenAI adapter
 │   ├── provider-anthropic/   # Anthropic adapter
-│   └── ui-contracts/         # Shared types for API ↔ UI
+│   ├── ui-contracts/         # Shared types for API ↔ UI
+│   └── create-agentmesh/     # CLI setup wizard (create-agentmesh)
 ├── apps/
-│   ├── server/               # Fastify REST API
+│   ├── server/               # Fastify REST API (port 3100)
 │   └── web/                  # Next.js dashboard
 └── examples/
     ├── research-agent/       # Web search → summarize
@@ -98,28 +133,101 @@ agentmesh-ts/
 
 ## Core Concepts
 
-### Run
+### Run Lifecycle
 
-One agent execution. Has a goal, a provider, allowed tools, and policy constraints.
+A **Run** is one agent execution. It has a goal, a provider, allowed tools, and policy constraints.
 
+```mermaid
+stateDiagram-v2
+    [*] --> queued
+    queued --> running
+
+    running --> succeeded
+    running --> failed
+    running --> waiting_approval
+    running --> waiting_child_runs
+
+    waiting_approval --> running : approved
+    waiting_approval --> cancelled
+
+    waiting_child_runs --> running : children completed
+    waiting_child_runs --> failed : child failed
+
+    succeeded --> [*]
+    failed --> [*]
+    cancelled --> [*]
 ```
-queued → running → succeeded
-                 → failed
-                 → waiting_approval → running (approved)
-                                    → cancelled
+
+### RunLoop
+
+The `RunLoop` encapsulates the full agent execution lifecycle — state machine transitions, budget enforcement, step iteration, and event emission.
+
+```typescript
+import { RunLoop } from "@agentmesh/core";
+
+const loop = new RunLoop(
+  {
+    runId: "run_001",
+    agentName: "research-agent",
+    goal: "Summarize recent AI news",
+    model: "gpt-4o",
+    systemPrompt: "You are a research assistant.",
+    budget: { maxSteps: 10, maxCostUsd: 0.50 },
+  },
+  { provider, toolHandler, policyChecker, onEvent: console.log },
+);
+
+const result = await loop.execute();
+// → { status, output, messages, totalSteps, totalCostUsd, events, usage }
 ```
 
-### Step
+### StepExecutor
 
-One unit of reasoning or action within a Run.
+One unit of reasoning within a Run. Each step:
 
-Kinds: `plan` | `llm_generation` | `tool_execution` | `policy_check` | `finalize`
+1. Calls the LLM with current messages and tool specs
+2. If tool calls are returned, evaluates policy → executes tools → appends results
+3. Returns updated messages, usage, and events
+
+All steps are instrumented with OpenTelemetry spans.
+
+```mermaid
+sequenceDiagram
+    participant RL as RunLoop
+    participant SE as StepExecutor
+    participant LLM as LLM Provider
+    participant PE as PolicyEngine
+    participant TE as ToolExecutor
+
+    RL->>SE: execute(stepInput)
+    SE->>LLM: generate(messages, tools)
+    LLM-->>SE: response + toolCalls
+
+    alt Has tool calls
+        loop For each tool call
+            SE->>PE: evaluate(toolCall)
+            PE-->>SE: allowed / blocked / requires_approval
+
+            alt Allowed
+                SE->>TE: execute(toolName, input)
+                TE-->>SE: output
+            else Blocked
+                SE-->>RL: blocked result
+            end
+        end
+        SE-->>RL: messages + tool results
+    else No tool calls (final answer)
+        SE-->>RL: final output
+    end
+```
 
 ### Tool
 
 A typed, scoped capability the agent can invoke.
 
 ```typescript
+import { defineTool } from "@agentmesh/toolkit";
+
 const httpFetch = defineTool({
   name: "http_fetch",
   description: "Fetch a public HTTP resource",
@@ -135,25 +243,74 @@ const httpFetch = defineTool({
 });
 ```
 
+**Built-in tools:** `webSearchTool`, `readFileTool`, `writeFileTool`, `httpFetchTool`, `runShellTool`
+
+**Side-effect levels:** `read_only` → `external_read` → `external_write` → `system_mutation`
+
 ### Policy
 
 Rules evaluated before every tool execution.
 
 ```typescript
-const costBudget: PolicyRule = {
-  name: "cost_budget",
-  async evaluate(ctx) {
-    const over = ctx.run.estimatedCostUsd > ctx.run.maxCostUsd;
-    return { allowed: !over, severity: "block", reason: "Cost budget exceeded" };
-  },
-};
+// Built-in rules
+import { CostBudgetRule, StepBudgetRule, ToolAllowlistRule } from "@agentmesh/policy";
+
+const engine = new PolicyEngine([
+  new CostBudgetRule(),
+  new StepBudgetRule(),
+  new ToolAllowlistRule(["http_fetch", "web_search"]),
+]);
+```
+
+### Workflow Orchestrator
+
+Multi-agent workflows defined as a DAG. Nodes within the same level execute in parallel.
+
+```mermaid
+graph LR
+    A[Parse Query] --> B[Tech Analysis]
+    A --> C[Biz Analysis]
+    B --> D[Merge Report]
+    C --> D
+
+    style A fill:#2d3436,color:#fff
+    style B fill:#0984e3,color:#fff
+    style C fill:#0984e3,color:#fff
+    style D fill:#6c5ce7,color:#fff
+```
+
+```typescript
+import { defineWorkflow, WorkflowOrchestrator } from "@agentmesh/workflow";
+
+const wf = defineWorkflow("research-report")
+  .node("parse",   { agentName: "parser",   goal: "Parse the query",                    model: "gpt-4o" })
+  .node("tech",    { agentName: "tech",      goal: (i) => `Tech analysis: ${i.parse}`,   model: "gpt-4o" })
+  .node("biz",     { agentName: "biz",       goal: (i) => `Biz analysis: ${i.parse}`,    model: "gpt-4o" })
+  .node("merge",   { agentName: "merger",    goal: (i) => `Merge: ${i.tech} + ${i.biz}`, model: "gpt-4o" })
+  .edge("parse", "tech")
+  .edge("parse", "biz")
+  .edge("tech",  "merge")
+  .edge("biz",   "merge")
+  .build();
+
+const orchestrator = new WorkflowOrchestrator(wf, {
+  resolveNodeDeps: createUniformDeps({ provider, toolHandler }),
+  onEvent: console.log,
+});
+
+const result = await orchestrator.execute();
+// Execution order: parse → [tech, biz] (parallel) → merge
 ```
 
 ### Trace
 
 Immutable event log of everything that happened in a Run.
 
-Events: `run.started` → `step.started` → `llm.called` → `llm.responded` → `tool.requested` → `policy.checked` → `tool.completed` → `step.completed` → `run.completed`
+```
+run.started → step.started → llm.called → llm.responded
+  → tool.requested → policy.checked → tool.completed
+  → step.completed → run.completed
+```
 
 ---
 
@@ -163,49 +320,59 @@ Events: `run.started` → `step.started` → `llm.called` → `llm.responded` �
 git clone https://github.com/takish/agentmesh-ts.git
 cd agentmesh-ts
 pnpm install
-pnpm dev
+pnpm build
 
 # Run an example
 pnpm example:research
+pnpm example:support-triage
+pnpm example:code-review
+```
+
+### Interactive Setup
+
+```bash
+pnpm create agentmesh
 ```
 
 ---
 
-## Runtime Loop
+## OpenTelemetry
 
-```typescript
-while (!run.isFinished()) {
-  const context = contextBuilder.build(run);
+Core execution is instrumented with `@opentelemetry/api`. When no `TracerProvider` is registered, all spans are no-ops with zero overhead.
 
-  const response = await provider.generate({
-    model: run.model,
-    messages: context.messages,
-    tools: context.tools,
-  });
+**Span hierarchy:**
 
-  if (response.toolCalls.length > 0) {
-    for (const toolCall of response.toolCalls) {
-      const decision = await policyEngine.evaluate(toolCall, run);
-
-      if (!decision.allowed) {
-        run.fail(decision.reason);
-        break;
-      }
-
-      if (decision.requiresApproval) {
-        run.waitForApproval(decision.reason);
-        break;
-      }
-
-      const result = await toolExecutor.execute(toolCall);
-      run.appendObservation(result);
-    }
-    continue;
-  }
-
-  run.complete(response.finalText);
-}
 ```
+run.{agentName}                    # Root span per Run
+├── step.{index}                   # One span per step
+│   ├── llm.generate               # LLM call with model, tokens, finish_reason
+│   ├── tool.{toolName}            # Tool execution with duration
+│   └── [policy.checked]           # Span event for policy decisions
+```
+
+**Recorded attributes:**
+
+| Span | Attributes |
+|------|-----------|
+| `run.*` | `run_id`, `agent_name`, `model`, `status`, `total_steps`, `total_cost_usd`, `input_tokens`, `output_tokens` |
+| `step.*` | `run_id`, `step.index`, `model`, `finish_reason`, `blocked`, `tool_calls` |
+| `llm.generate` | `model`, `input_tokens`, `output_tokens`, `finish_reason` |
+| `tool.*` | `tool.name`, `tool.duration_ms` |
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/runs` | Create a new run |
+| `GET` | `/api/runs` | List runs (filter by status, workflowId) |
+| `GET` | `/api/runs/:id` | Run detail with steps |
+| `GET` | `/api/runs/:id/events` | Event stream |
+| `GET` | `/api/runs/:id/children` | Child runs |
+| `POST` | `/api/runs/:id/approve` | Approve waiting run |
+| `POST` | `/api/runs/:id/cancel` | Cancel run |
+| `GET` | `/health` | Health check |
 
 ---
 
@@ -213,40 +380,26 @@ while (!run.isFinished()) {
 
 | Layer | Stack |
 |-------|-------|
-| **Runtime** | TypeScript, Node.js, Zod |
+| **Runtime** | TypeScript 5.8, Node.js 18+, Zod |
 | **API** | Fastify, Pino |
 | **Persistence** | PostgreSQL, Drizzle ORM |
-| **Web UI** | Next.js, React, Tailwind CSS, shadcn/ui |
-| **Monorepo** | pnpm workspace, Turborepo |
-| **Testing** | Vitest, Playwright |
-| **Observability** | OpenTelemetry (planned) |
-
----
-
-## Comparison
-
-| Capability | AgentMesh | Basic wrapper | LangGraph |
-|-----------|-----------|---------------|-----------|
-| Typed tool contracts | Yes (Zod) | No | Partial |
-| Policy engine | Yes | No | No |
-| Step-level trace | Yes | No | Partial |
-| Replay from trace | Yes | No | No |
-| Provider abstraction | Yes | No | Yes |
-| Cost tracking | Yes | No | No |
-| Approval gates | Yes | No | No |
-| Web UI | Yes | No | LangSmith |
+| **Web UI** | Next.js, React 19, Tailwind CSS, shadcn/ui |
+| **Monorepo** | pnpm workspaces, Turborepo |
+| **Testing** | Vitest |
+| **Observability** | OpenTelemetry |
+| **LLM Providers** | OpenAI SDK, Anthropic SDK |
 
 ---
 
 ## Roadmap
 
-See [Issues](https://github.com/takish/agentmesh-ts/issues) and [Milestone: v0.1](https://github.com/takish/agentmesh-ts/milestone/1).
+See [Issues](https://github.com/takish/agentmesh-ts/issues) for details.
 
-| Version | Focus |
-|---------|-------|
-| **v0.1** | Core runtime, providers, tools, policy, persistence, API, Web UI, first example |
-| **v0.2** | Replay, checkpoint/resume, token/cost tracking, parallel tools, OTel |
-| **v0.3** | Queue worker, distributed runs, MCP adapter, hosted mode |
+| Version | Focus | Status |
+|---------|-------|--------|
+| **v0.1** | Core runtime, providers, tools, policy, persistence, API, Web UI | Done |
+| **v0.2** | RunLoop abstraction, multi-agent workflows, OpenTelemetry, parent-child runs | Done |
+| **v0.3** | Queue worker, distributed runs, MCP adapter, hosted mode | Planned |
 
 ---
 
