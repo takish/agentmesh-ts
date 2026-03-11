@@ -1,6 +1,29 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
+.next/
+
+# Environment variables
 .env
-.env.local
-*.log
+.env.*
+!.env.example
+
+# Turbo
 .turbo/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code (personal settings)
+.claude/
