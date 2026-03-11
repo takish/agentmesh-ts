@@ -6,12 +6,18 @@
   "description": "Example research agent",
   "dependencies": {
     "@agentmesh/core": "workspace:*",
-    "@agentmesh/toolkit": "workspace:*"
+    "@agentmesh/policy": "workspace:*",
+    "@agentmesh/provider-openai": "workspace:*",
+    "@agentmesh/toolkit": "workspace:*",
+    "tsx": "^4.21.0"
   },
   "scripts": {
     "start": "tsx src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0"
   }
 }

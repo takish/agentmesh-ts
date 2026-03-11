@@ -8,7 +8,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "example:research": "pnpm --filter @agentmesh/example-research-agent start"
   },
   "devDependencies": {
     "turbo": "^2.5.0",
