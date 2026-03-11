@@ -20,6 +20,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "lint": "eslint src/",
     "test": "vitest run",
     "clean": "rm -rf dist"

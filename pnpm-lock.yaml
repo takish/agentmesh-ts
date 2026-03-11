@@ -252,6 +252,18 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  tests/e2e:
+    devDependencies:
+      '@agentmesh/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@agentmesh/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@types/node@25.4.0)(tsx@4.21.0)
+
 packages:
 
   '@anthropic-ai/sdk@0.78.0':

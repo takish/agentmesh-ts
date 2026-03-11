@@ -5,7 +5,8 @@ import {
   incrementStep,
   checkBudget,
   StepExecutor,
-} from "../index.js";
+  _resetStepEventSeq,
+} from "@agentmesh/core";
 import type {
   LlmProvider,
   ProviderGenerateInput,
@@ -13,7 +14,13 @@ import type {
   ToolHandler,
   PolicyChecker,
   ProviderMessage,
-} from "../index.js";
+} from "@agentmesh/core";
+import {
+  PolicyEngine,
+  ToolAllowlistRule,
+  StepBudgetRule,
+  CostBudgetRule,
+} from "@agentmesh/policy";
 
 // --- Mock Provider ---
 function createMockProvider(responses: ProviderGenerateOutput[]): LlmProvider {
