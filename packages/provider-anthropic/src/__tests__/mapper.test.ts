@@ -83,6 +83,62 @@ describe("toAnthropicMessages", () => {
   });
 });
 
+describe("extractSystemMessage edge cases", () => {
+  it("handles empty messages array", () => {
+    const result = extractSystemMessage([]);
+    expect(result.system).toBeUndefined();
+    expect(result.messages).toHaveLength(0);
+  });
+});
+
+describe("toAnthropicMessages edge cases", () => {
+  it("handles empty messages array", () => {
+    const result = toAnthropicMessages([]);
+    expect(result).toHaveLength(0);
+  });
+
+  it("handles assistant with null content and tool calls", () => {
+    const messages: ProviderMessage[] = [
+      {
+        role: "assistant",
+        content: null,
+        toolCalls: [{ id: "tu_1", name: "search", arguments: '{}' }],
+      },
+    ];
+    const result = toAnthropicMessages(messages);
+    const msg = result[0] as { content: unknown[] };
+    // Should only have tool_use block, no text block for null content
+    expect(msg.content).toHaveLength(1);
+    expect((msg.content[0] as { type: string }).type).toBe("tool_use");
+  });
+
+  it("handles assistant with empty toolCalls array", () => {
+    const messages: ProviderMessage[] = [
+      { role: "assistant", content: "Hi", toolCalls: [] },
+    ];
+    const result = toAnthropicMessages(messages);
+    expect(result[0]).toEqual({ role: "assistant", content: "Hi" });
+  });
+});
+
+describe("fromAnthropicResponse edge cases", () => {
+  it("handles empty content array", () => {
+    const response = {
+      id: "msg_4",
+      type: "message" as const,
+      role: "assistant" as const,
+      model: "claude-sonnet-4-20250514",
+      content: [],
+      stop_reason: "end_turn" as const,
+      stop_sequence: null,
+      usage: { input_tokens: 5, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+    } as Anthropic.Message;
+    const result = fromAnthropicResponse(response);
+    expect(result.message.content).toBeNull();
+    expect(result.finishReason).toBe("stop");
+  });
+});
+
 describe("toAnthropicTools", () => {
   it("maps tool specs", () => {
     const tools: ProviderToolSpec[] = [
