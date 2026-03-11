@@ -1,3 +1,5 @@
+import { trace, SpanStatusCode } from "@opentelemetry/api";
+import type { Span } from "@opentelemetry/api";
 import type { LlmProvider, ProviderMessage, ProviderUsage } from "./provider.js";
 import type { ExecutionEvent } from "./schema/event.js";
 import type { ToolHandler, PolicyChecker } from "./step-executor.js";
@@ -9,6 +11,8 @@ import {
   checkBudget,
   incrementStep,
 } from "./run-machine.js";
+
+const tracer = trace.getTracer("@agentmesh/core");
 
 export interface RunLoopConfig {
   runId: string;
@@ -48,6 +52,16 @@ export class RunLoop {
   }
 
   async execute(): Promise<RunLoopResult> {
+    return tracer.startActiveSpan(`run.${this.config.agentName}`, {
+      attributes: {
+        "agentmesh.run_id": this.config.runId,
+        "agentmesh.agent_name": this.config.agentName,
+        "agentmesh.model": this.config.model,
+      },
+    }, (runSpan: Span) => this._executeInSpan(runSpan));
+  }
+
+  private async _executeInSpan(runSpan: Span): Promise<RunLoopResult> {
     const allEvents: ExecutionEvent[] = [];
     const totalUsage: ProviderUsage = { inputTokens: 0, outputTokens: 0 };
 
@@ -154,6 +168,19 @@ export class RunLoop {
     const endResult = transition(machine, terminalStatus);
     machine = endResult.state;
     emitEvent(endResult.event);
+
+    runSpan.setAttributes({
+      "agentmesh.run.status": finalStatus,
+      "agentmesh.run.total_steps": machine.stepCount,
+      "agentmesh.run.total_cost_usd": machine.totalCostUsd,
+      "agentmesh.run.input_tokens": totalUsage.inputTokens,
+      "agentmesh.run.output_tokens": totalUsage.outputTokens,
+    });
+
+    if (finalStatus !== "succeeded") {
+      runSpan.setStatus({ code: SpanStatusCode.ERROR, message: finalStatus });
+    }
+    runSpan.end();
 
     return {
       status: finalStatus,
