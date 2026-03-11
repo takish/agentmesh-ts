@@ -134,7 +134,26 @@ export class StepExecutor {
     const toolMessages: ProviderMessage[] = [];
 
     for (const tc of llmOutput.message.toolCalls) {
-      const parsedInput = JSON.parse(tc.arguments) as Record<string, unknown>;
+      let parsedInput: Record<string, unknown>;
+      try {
+        parsedInput = JSON.parse(tc.arguments) as Record<string, unknown>;
+      } catch {
+        toolCallResults.push({
+          toolName: tc.name,
+          input: {},
+          output: null,
+          durationMs: 0,
+          status: "failed",
+          error: `Invalid tool arguments JSON: ${tc.arguments}`,
+        });
+        toolMessages.push({
+          role: "tool",
+          content: JSON.stringify({ error: "Invalid tool arguments JSON" }),
+          toolCallId: tc.id,
+        });
+        events.push(emitEvent(input.runId, stepId, "step.failed", { toolName: tc.name, error: "Invalid JSON arguments" }));
+        continue;
+      }
 
       events.push(emitEvent(input.runId, stepId, "tool.requested", { toolName: tc.name, input: parsedInput }));
 
