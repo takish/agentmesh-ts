@@ -1,0 +1,3 @@
+module.exports=[77930,a=>{"use strict";var b=a.i(81332);function c({children:a}){return(0,b.jsx)("html",{lang:"en",className:"dark",children:(0,b.jsx)("body",{style:{margin:0,fontFamily:"system-ui, sans-serif",background:"#0a0a0a",color:"#ededed"},children:a})})}a.s(["default",()=>c,"metadata",0,{title:"AgentMesh Dashboard",description:"AI Agent execution monitoring"}])}];
+
+//# sourceMappingURL=apps_web_src_app_layout_tsx_a4dff4b0._.js.map

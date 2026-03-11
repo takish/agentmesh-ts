@@ -5,8 +5,20 @@
   "type": "module",
   "description": "Next.js dashboard",
   "scripts": {
-    "dev": "echo 'web: not yet implemented'",
-    "build": "echo 'web: not yet implemented'",
-    "start": "echo 'web: not yet implemented'"
+    "dev": "next dev --port 3200",
+    "build": "next build",
+    "start": "next start --port 3200"
+  },
+  "dependencies": {
+    "@agentmesh/ui-contracts": "workspace:*",
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
   }
 }
