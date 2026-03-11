@@ -3,6 +3,9 @@ import { z } from "zod";
 export const EventType = z.enum([
   "run.created",
   "run.started",
+  "run.spawned",
+  "run.child_completed",
+  "run.child_failed",
   "step.started",
   "llm.called",
   "llm.responded",
