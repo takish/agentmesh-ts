@@ -132,7 +132,7 @@ describe("fromAnthropicResponse edge cases", () => {
       stop_reason: "end_turn" as const,
       stop_sequence: null,
       usage: { input_tokens: 5, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-    } as Anthropic.Message;
+    } as unknown as Anthropic.Message;
     const result = fromAnthropicResponse(response);
     expect(result.message.content).toBeNull();
     expect(result.finishReason).toBe("stop");
@@ -164,7 +164,7 @@ describe("fromAnthropicResponse", () => {
       stop_reason: "end_turn" as const,
       stop_sequence: null,
       usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-    } as Anthropic.Message;
+    } as unknown as Anthropic.Message;
     const result = fromAnthropicResponse(response);
     expect(result.message.content).toBe("Hello!");
     expect(result.finishReason).toBe("stop");
@@ -184,7 +184,7 @@ describe("fromAnthropicResponse", () => {
       stop_reason: "tool_use" as const,
       stop_sequence: null,
       usage: { input_tokens: 20, output_tokens: 15, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-    } as Anthropic.Message;
+    } as unknown as Anthropic.Message;
     const result = fromAnthropicResponse(response);
     expect(result.finishReason).toBe("tool_calls");
     expect(result.message.toolCalls).toHaveLength(1);
@@ -206,7 +206,7 @@ describe("fromAnthropicResponse", () => {
       stop_reason: "max_tokens" as const,
       stop_sequence: null,
       usage: { input_tokens: 5, output_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-    } as Anthropic.Message;
+    } as unknown as Anthropic.Message;
     const result = fromAnthropicResponse(response);
     expect(result.finishReason).toBe("length");
   });

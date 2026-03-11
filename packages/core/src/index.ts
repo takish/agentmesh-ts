@@ -34,7 +34,7 @@ export type {
   FinishReason,
 } from "./provider.js";
 
-export { StepExecutor } from "./step-executor.js";
+export { StepExecutor, _resetStepEventSeq } from "./step-executor.js";
 export type {
   ToolHandler,
   PolicyChecker,

@@ -5,8 +5,8 @@ import {
   incrementStep,
   checkBudget,
   StepExecutor,
-} from "../index.js";
-import { _resetStepEventSeq } from "../step-executor.js";
+  _resetStepEventSeq,
+} from "@agentmesh/core";
 import type {
   LlmProvider,
   ProviderGenerateInput,
@@ -14,7 +14,7 @@ import type {
   ToolHandler,
   PolicyChecker,
   ProviderMessage,
-} from "../index.js";
+} from "@agentmesh/core";
 import {
   PolicyEngine,
   ToolAllowlistRule,
