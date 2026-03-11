@@ -7,11 +7,18 @@
   "types": "dist/index.d.ts",
   "description": "Execution trace storage and metrics",
   "dependencies": {
-    "@agentmesh/core": "workspace:*"
+    "@agentmesh/core": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "postgres": "^3.4.8"
   },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.9"
   }
 }
