@@ -110,6 +110,27 @@ describe("StepExecutor", () => {
     expect(result.messages.at(2)?.content).toContain("timeout");
   });
 
+  it("handles invalid JSON tool arguments", async () => {
+    const provider = makeProvider({
+      message: {
+        role: "assistant",
+        content: null,
+        toolCalls: [{ id: "tc_1", name: "search", arguments: "not valid json{" }],
+      },
+      finishReason: "tool_calls",
+      usage: { inputTokens: 10, outputTokens: 5 },
+    });
+    const executor = new StepExecutor(provider, makeToolHandler());
+
+    const result = await executor.execute(makeInput());
+
+    const tc0 = result.toolCallResults.at(0);
+    expect(tc0?.status).toBe("failed");
+    expect(tc0?.error).toContain("Invalid tool arguments JSON");
+    expect(result.messages.at(2)?.role).toBe("tool");
+    expect(result.events.some((e) => e.eventType === "step.failed")).toBe(true);
+  });
+
   it("handles LLM provider error", async () => {
     const provider: LlmProvider = {
       name: "mock",
