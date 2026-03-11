@@ -6,7 +6,7 @@ async function fetchRun(id: string): Promise<RunDetail | null> {
   try {
     const res = await fetch(`${API_BASE}/api/runs/${id}`, { cache: "no-store" });
     if (!res.ok) return null;
-    return res.json();
+    return (await res.json()) as RunDetail;
   } catch {
     return null;
   }
@@ -16,7 +16,7 @@ async function fetchEvents(id: string): Promise<EventSummary[]> {
   try {
     const res = await fetch(`${API_BASE}/api/runs/${id}/events`, { cache: "no-store" });
     if (!res.ok) return [];
-    return res.json();
+    return (await res.json()) as EventSummary[];
   } catch {
     return [];
   }

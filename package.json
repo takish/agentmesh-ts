@@ -12,8 +12,13 @@
     "example:research": "pnpm --filter @agentmesh/example-research-agent start"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
+    "@typescript-eslint/parser": "^8.57.0",
+    "eslint": "^10.0.3",
+    "globals": "^17.4.0",
     "turbo": "^2.5.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.57.0"
   },
   "packageManager": "pnpm@10.15.1"
 }

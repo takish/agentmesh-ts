@@ -6,7 +6,7 @@ async function fetchRuns(): Promise<RunSummary[]> {
   try {
     const res = await fetch(`${API_BASE}/api/runs?limit=20`, { cache: "no-store" });
     if (!res.ok) return [];
-    return res.json();
+    return (await res.json()) as RunSummary[];
   } catch {
     return [];
   }

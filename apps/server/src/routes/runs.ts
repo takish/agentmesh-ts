@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { RunRepository, StepRepository, EventRepository } from "@agentmesh/trace";
+import type { RunRepository, StepRepository, EventRepository } from "@agentmesh/trace";
 
 const CreateRunBody = z.object({
   agentName: z.string(),
