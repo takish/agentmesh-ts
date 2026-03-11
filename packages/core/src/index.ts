@@ -22,3 +22,14 @@ export {
   InvalidTransitionError,
 } from "./run-machine.js";
 export type { RunBudget, RunMachineState, TransitionResult } from "./run-machine.js";
+
+export type {
+  LlmProvider,
+  ProviderGenerateInput,
+  ProviderGenerateOutput,
+  ProviderMessage,
+  ProviderToolCall,
+  ProviderToolSpec,
+  ProviderUsage,
+  FinishReason,
+} from "./provider.js";

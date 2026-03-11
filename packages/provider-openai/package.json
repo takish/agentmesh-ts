@@ -7,11 +7,16 @@
   "types": "dist/index.d.ts",
   "description": "OpenAI provider adapter",
   "dependencies": {
-    "@agentmesh/core": "workspace:*"
+    "@agentmesh/core": "workspace:*",
+    "openai": "^6.27.0"
   },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }
