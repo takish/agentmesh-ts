@@ -33,3 +33,12 @@ export type {
   ProviderUsage,
   FinishReason,
 } from "./provider.js";
+
+export { StepExecutor } from "./step-executor.js";
+export type {
+  ToolHandler,
+  PolicyChecker,
+  StepInput,
+  StepOutput,
+  ToolCallResult,
+} from "./step-executor.js";
