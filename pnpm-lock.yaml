@@ -44,7 +44,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/toolkit
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
   packages/policy:
     dependencies:
@@ -123,6 +127,9 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+
 snapshots:
 
   turbo-darwin-64@2.8.16:
@@ -153,3 +160,5 @@ snapshots:
       turbo-windows-arm64: 2.8.16
 
   typescript@5.9.3: {}
+
+  zod@4.3.6: {}
