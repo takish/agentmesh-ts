@@ -1,6 +1,10 @@
 # agentmesh-ts
 
 [![CI](https://github.com/takish/agentmesh-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/takish/agentmesh-ts/actions/workflows/ci.yml)
+![Node.js 18+](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
+![TypeScript 5.8](https://img.shields.io/badge/TypeScript-5.8-3178c6?logo=typescript&logoColor=white)
+![pnpm 10](https://img.shields.io/badge/pnpm-10-f69220?logo=pnpm&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ```
      █████╗  ██████╗ ███████╗███╗   ██╗████████╗
