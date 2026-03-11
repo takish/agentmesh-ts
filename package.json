@@ -11,7 +11,8 @@
     "clean": "turbo run clean",
     "example:research": "pnpm --filter @agentmesh/example-research-agent start",
     "example:support-triage": "pnpm --filter @agentmesh/example-support-triage-agent start",
-    "example:code-review": "pnpm --filter @agentmesh/example-code-review-agent start"
+    "example:code-review": "pnpm --filter @agentmesh/example-code-review-agent start",
+    "create": "pnpm --filter create-agentmesh dev"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.0",
