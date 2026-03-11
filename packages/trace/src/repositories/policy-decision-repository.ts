@@ -10,7 +10,7 @@ export class PolicyDecisionRepository {
 
   async create(decision: PolicyDecisionInsert): Promise<PolicyDecisionSelect> {
     const [result] = await this.db.insert(policyDecisions).values(decision).returning();
-    return result;
+    return result!;
   }
 
   async createMany(items: PolicyDecisionInsert[]): Promise<PolicyDecisionSelect[]> {

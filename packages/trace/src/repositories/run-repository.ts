@@ -10,7 +10,7 @@ export class RunRepository {
 
   async create(run: RunInsert): Promise<RunSelect> {
     const [result] = await this.db.insert(runs).values(run).returning();
-    return result;
+    return result!;
   }
 
   async findById(id: string): Promise<RunSelect | undefined> {

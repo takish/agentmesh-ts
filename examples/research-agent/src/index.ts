@@ -105,9 +105,9 @@ async function main() {
     console.log(`   Events: ${result.events.map((e) => e.eventType).join(", ")}`);
 
     if (result.finishReason === "stop") {
-      const lastMessage = messages[messages.length - 1];
+      const lastMessage = messages.at(-1);
       console.log(`\n✅ Research complete!\n`);
-      console.log(lastMessage.content);
+      console.log(lastMessage?.content);
       break;
     }
 

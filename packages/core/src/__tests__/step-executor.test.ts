@@ -52,7 +52,7 @@ describe("StepExecutor", () => {
     expect(result.finishReason).toBe("stop");
     expect(result.toolCallResults).toHaveLength(0);
     expect(result.messages).toHaveLength(2);
-    expect(result.messages[1].content).toBe("Hi there!");
+    expect(result.messages.at(1)?.content).toBe("Hi there!");
     expect(result.events.some((e) => e.eventType === "step.started")).toBe(true);
     expect(result.events.some((e) => e.eventType === "llm.called")).toBe(true);
     expect(result.events.some((e) => e.eventType === "llm.responded")).toBe(true);
@@ -75,11 +75,12 @@ describe("StepExecutor", () => {
 
     expect(result.finishReason).toBe("tool_calls");
     expect(result.toolCallResults).toHaveLength(1);
-    expect(result.toolCallResults[0].status).toBe("succeeded");
-    expect(result.toolCallResults[0].output).toEqual({ results: ["a", "b"] });
+    const tc0 = result.toolCallResults.at(0);
+    expect(tc0?.status).toBe("succeeded");
+    expect(tc0?.output).toEqual({ results: ["a", "b"] });
     // messages: user + assistant + tool result
     expect(result.messages).toHaveLength(3);
-    expect(result.messages[2].role).toBe("tool");
+    expect(result.messages.at(2)?.role).toBe("tool");
     expect(result.events.some((e) => e.eventType === "tool.requested")).toBe(true);
     expect(result.events.some((e) => e.eventType === "tool.completed")).toBe(true);
   });
@@ -102,10 +103,11 @@ describe("StepExecutor", () => {
 
     const result = await executor.execute(makeInput());
 
-    expect(result.toolCallResults[0].status).toBe("failed");
-    expect(result.toolCallResults[0].error).toBe("timeout");
-    expect(result.messages[2].role).toBe("tool");
-    expect(result.messages[2].content).toContain("timeout");
+    const tc0 = result.toolCallResults.at(0);
+    expect(tc0?.status).toBe("failed");
+    expect(tc0?.error).toBe("timeout");
+    expect(result.messages.at(2)?.role).toBe("tool");
+    expect(result.messages.at(2)?.content).toContain("timeout");
   });
 
   it("handles LLM provider error", async () => {
@@ -139,7 +141,7 @@ describe("StepExecutor", () => {
     const result = await executor.execute(makeInput());
 
     expect(result.blocked).toBe(true);
-    expect(result.toolCallResults[0].status).toBe("blocked");
+    expect(result.toolCallResults.at(0)?.status).toBe("blocked");
     expect(result.events.some((e) => e.eventType === "policy.checked")).toBe(true);
   });
 
@@ -161,8 +163,8 @@ describe("StepExecutor", () => {
     const result = await executor.execute(makeInput());
 
     expect(result.requiresApproval).toBe(true);
-    expect(result.toolCallResults[0].status).toBe("blocked");
-    expect(result.toolCallResults[0].error).toBe("Requires approval");
+    expect(result.toolCallResults.at(0)?.status).toBe("blocked");
+    expect(result.toolCallResults.at(0)?.error).toBe("Requires approval");
   });
 
   it("works without policy checker", async () => {
@@ -179,7 +181,7 @@ describe("StepExecutor", () => {
 
     const result = await executor.execute(makeInput());
 
-    expect(result.toolCallResults[0].status).toBe("succeeded");
+    expect(result.toolCallResults.at(0)?.status).toBe("succeeded");
     expect(result.blocked).toBe(false);
   });
 });

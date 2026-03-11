@@ -10,7 +10,7 @@ export class EventRepository {
 
   async create(event: EventInsert): Promise<EventSelect> {
     const [result] = await this.db.insert(events).values(event).returning();
-    return result;
+    return result!;
   }
 
   async createMany(items: EventInsert[]): Promise<EventSelect[]> {

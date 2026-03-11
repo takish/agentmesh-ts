@@ -10,7 +10,7 @@ export class ToolCallRepository {
 
   async create(toolCall: ToolCallInsert): Promise<ToolCallSelect> {
     const [result] = await this.db.insert(toolCalls).values(toolCall).returning();
-    return result;
+    return result!;
   }
 
   async createMany(items: ToolCallInsert[]): Promise<ToolCallSelect[]> {

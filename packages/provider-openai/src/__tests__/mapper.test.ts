@@ -98,7 +98,7 @@ describe("fromOpenAIChoice", () => {
     const result = fromOpenAIChoice(choice);
     expect(result.finishReason).toBe("tool_calls");
     expect(result.message.toolCalls).toHaveLength(1);
-    expect(result.message.toolCalls![0].name).toBe("search");
+    expect(result.message.toolCalls!.at(0)?.name).toBe("search");
   });
 });
 

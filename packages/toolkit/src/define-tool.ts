@@ -24,7 +24,7 @@ export interface ToolDefinition<
   permissionScope: string;
   sideEffectLevel: SideEffectLevel;
   timeoutMs: number;
-  retryPolicy?: RetryPolicy;
+  retryPolicy?: RetryPolicy | undefined;
   execute: (input: z.infer<TInput>) => Promise<z.infer<TOutput>>;
 }
 
@@ -36,7 +36,7 @@ export interface ToolContract {
   permissionScope: string;
   sideEffectLevel: SideEffectLevel;
   timeoutMs: number;
-  retryPolicy?: RetryPolicy;
+  retryPolicy?: RetryPolicy | undefined;
 }
 
 export interface Tool<
