@@ -10,7 +10,7 @@ export class StepRepository {
 
   async create(step: StepInsert): Promise<StepSelect> {
     const [result] = await this.db.insert(steps).values(step).returning();
-    return result;
+    return result!;
   }
 
   async findById(id: string): Promise<StepSelect | undefined> {

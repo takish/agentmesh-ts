@@ -26,14 +26,16 @@ export class AnthropicProvider implements LlmProvider {
   async generate(input: ProviderGenerateInput): Promise<ProviderGenerateOutput> {
     const { system, messages } = extractSystemMessage(input.messages);
 
-    const response = await this.client.messages.create({
+    const params: Anthropic.MessageCreateParamsNonStreaming = {
       model: input.model,
-      system: system,
       messages: toAnthropicMessages(messages),
-      tools: input.tools?.length ? toAnthropicTools(input.tools) : undefined,
-      temperature: input.temperature,
       max_tokens: input.maxTokens ?? 4096,
-    });
+    };
+    if (system !== undefined) params.system = system;
+    if (input.tools?.length) params.tools = toAnthropicTools(input.tools);
+    if (input.temperature !== undefined) params.temperature = input.temperature;
+
+    const response = await this.client.messages.create(params);
 
     return fromAnthropicResponse(response);
   }

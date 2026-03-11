@@ -21,7 +21,7 @@ export interface PolicyChecker {
     runId: string;
     currentStepCount: number;
     totalCostUsd: number;
-  }): Promise<{ allowed: boolean; requiresApproval: boolean; reason?: string }>;
+  }): Promise<{ allowed: boolean; requiresApproval: boolean; reason?: string | undefined }>;
 }
 
 export interface StepInput {
@@ -49,7 +49,7 @@ export interface ToolCallResult {
   output: unknown;
   durationMs: number;
   status: "succeeded" | "failed" | "blocked";
-  error?: string;
+  error?: string | undefined;
 }
 
 let eventSeq = 0;
