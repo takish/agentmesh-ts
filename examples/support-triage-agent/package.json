@@ -1,0 +1,23 @@
+{
+  "name": "@agentmesh/example-support-triage-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Example support triage agent — classifies and drafts replies",
+  "dependencies": {
+    "@agentmesh/core": "workspace:*",
+    "@agentmesh/policy": "workspace:*",
+    "@agentmesh/provider-openai": "workspace:*",
+    "tsx": "^4.21.0"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0"
+  }
+}
