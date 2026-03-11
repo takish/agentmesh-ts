@@ -9,9 +9,13 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
   }
 }
