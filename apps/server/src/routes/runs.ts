@@ -16,6 +16,15 @@ const CreateRunBody = z.object({
     .optional(),
 });
 
+const ListRunsQuery = z.object({
+  status: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const IdParams = z.object({
+  id: z.string().min(1),
+});
+
 function generateId(): string {
   const ts = Date.now().toString(36);
   const rand = Math.random().toString(36).slice(2, 8);
@@ -53,56 +62,71 @@ export function registerRunRoutes(
 
   // GET /api/runs — List runs
   app.get("/api/runs", async (req, reply) => {
-    const query = req.query as { status?: string; limit?: string };
-    const limit = Math.min(parseInt(query.limit ?? "50", 10) || 50, 100);
-    const runs = query.status
-      ? await runRepo.listByStatus(query.status, limit)
+    const parsed = ListRunsQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid query", details: parsed.error.issues });
+    }
+    const { status, limit } = parsed.data;
+    const runs = status
+      ? await runRepo.listByStatus(status, limit)
       : await runRepo.listRecent(limit);
     return reply.send(runs);
   });
 
   // GET /api/runs/:id — Run detail
   app.get("/api/runs/:id", async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const run = await runRepo.findById(id);
+    const parsed = IdParams.safeParse(req.params);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid params", details: parsed.error.issues });
+    }
+    const run = await runRepo.findById(parsed.data.id);
     if (!run) return reply.status(404).send({ error: "Run not found" });
 
-    const steps = await stepRepo.listByRunId(id);
+    const steps = await stepRepo.listByRunId(parsed.data.id);
     return reply.send({ ...run, steps });
   });
 
   // GET /api/runs/:id/events — Run events
   app.get("/api/runs/:id/events", async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const run = await runRepo.findById(id);
+    const parsed = IdParams.safeParse(req.params);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid params", details: parsed.error.issues });
+    }
+    const run = await runRepo.findById(parsed.data.id);
     if (!run) return reply.status(404).send({ error: "Run not found" });
 
-    const events = await eventRepo.listByRunId(id);
+    const events = await eventRepo.listByRunId(parsed.data.id);
     return reply.send(events);
   });
 
   // POST /api/runs/:id/approve — Approve run
   app.post("/api/runs/:id/approve", async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const run = await runRepo.findById(id);
+    const parsed = IdParams.safeParse(req.params);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid params", details: parsed.error.issues });
+    }
+    const run = await runRepo.findById(parsed.data.id);
     if (!run) return reply.status(404).send({ error: "Run not found" });
     if (run.status !== "waiting_approval") {
       return reply.status(409).send({ error: `Cannot approve run in status: ${run.status}` });
     }
-    await runRepo.updateStatus(id, "running");
-    return reply.send({ id, status: "running" });
+    await runRepo.updateStatus(parsed.data.id, "running");
+    return reply.send({ id: parsed.data.id, status: "running" });
   });
 
   // POST /api/runs/:id/cancel — Cancel run
   app.post("/api/runs/:id/cancel", async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const run = await runRepo.findById(id);
+    const parsed = IdParams.safeParse(req.params);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid params", details: parsed.error.issues });
+    }
+    const run = await runRepo.findById(parsed.data.id);
     if (!run) return reply.status(404).send({ error: "Run not found" });
     const cancellable = ["queued", "running", "waiting_approval"];
     if (!cancellable.includes(run.status)) {
       return reply.status(409).send({ error: `Cannot cancel run in status: ${run.status}` });
     }
-    await runRepo.updateStatus(id, "cancelled", new Date());
-    return reply.send({ id, status: "cancelled" });
+    await runRepo.updateStatus(parsed.data.id, "cancelled", new Date());
+    return reply.send({ id: parsed.data.id, status: "cancelled" });
   });
 }
