@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { writeFile } from "node:fs/promises";
 import { defineTool } from "../define-tool.js";
 
 export const writeFileTool = defineTool({
@@ -15,7 +16,9 @@ export const writeFileTool = defineTool({
   permissionScope: "file:write",
   sideEffectLevel: "external_write",
   timeoutMs: 5_000,
-  async execute(_input) {
-    throw new Error("write_file: not implemented — provide a concrete adapter");
+  async execute(input) {
+    const bytesWritten = Buffer.byteLength(input.content, input.encoding as BufferEncoding);
+    await writeFile(input.path, input.content, { encoding: input.encoding as BufferEncoding });
+    return { bytesWritten };
   },
 });
