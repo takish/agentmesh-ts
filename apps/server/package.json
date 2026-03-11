@@ -8,15 +8,21 @@
   "description": "Fastify REST API server",
   "dependencies": {
     "@agentmesh/core": "workspace:*",
-    "@agentmesh/toolkit": "workspace:*",
     "@agentmesh/policy": "workspace:*",
+    "@agentmesh/toolkit": "workspace:*",
     "@agentmesh/trace": "workspace:*",
-    "@agentmesh/ui-contracts": "workspace:*"
+    "@agentmesh/ui-contracts": "workspace:*",
+    "fastify": "^5.8.2",
+    "tsx": "^4.21.0",
+    "zod": "^4.3.6"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0"
   }
 }
