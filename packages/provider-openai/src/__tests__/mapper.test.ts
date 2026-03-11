@@ -102,6 +102,65 @@ describe("fromOpenAIChoice", () => {
   });
 });
 
+describe("toOpenAIMessages edge cases", () => {
+  it("handles empty messages array", () => {
+    const result = toOpenAIMessages([]);
+    expect(result).toHaveLength(0);
+  });
+
+  it("handles null content in assistant message", () => {
+    const messages: ProviderMessage[] = [
+      { role: "assistant", content: null },
+    ];
+    const result = toOpenAIMessages(messages);
+    expect(result[0]).toEqual({ role: "assistant", content: "" });
+  });
+
+  it("handles assistant with empty toolCalls array", () => {
+    const messages: ProviderMessage[] = [
+      { role: "assistant", content: "Hi", toolCalls: [] },
+    ];
+    const result = toOpenAIMessages(messages);
+    const msg = result[0] as OpenAI.ChatCompletionAssistantMessageParam;
+    expect(msg.tool_calls).toBeUndefined();
+  });
+});
+
+describe("fromOpenAIChoice edge cases", () => {
+  it("maps length finish_reason", () => {
+    const choice = {
+      index: 0,
+      message: { role: "assistant" as const, content: "Truncated", refusal: null },
+      finish_reason: "length" as const,
+      logprobs: null,
+    };
+    const result = fromOpenAIChoice(choice);
+    expect(result.finishReason).toBe("length");
+  });
+
+  it("maps content_filter finish_reason", () => {
+    const choice = {
+      index: 0,
+      message: { role: "assistant" as const, content: null, refusal: null },
+      finish_reason: "content_filter" as const,
+      logprobs: null,
+    };
+    const result = fromOpenAIChoice(choice);
+    expect(result.finishReason).toBe("content_filter");
+  });
+
+  it("handles message with no tool_calls", () => {
+    const choice = {
+      index: 0,
+      message: { role: "assistant" as const, content: "Hi", refusal: null },
+      finish_reason: "stop" as const,
+      logprobs: null,
+    };
+    const result = fromOpenAIChoice(choice);
+    expect(result.message.toolCalls).toBeUndefined();
+  });
+});
+
 describe("fromOpenAIUsage", () => {
   it("maps usage", () => {
     const usage = { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 };
