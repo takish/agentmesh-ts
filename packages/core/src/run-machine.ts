@@ -31,6 +31,8 @@ export interface RunMachineState {
   stepCount: number;
   totalCostUsd: number;
   budget: RunBudget;
+  parentRunId?: string | undefined;
+  workflowId?: string | undefined;
 }
 
 export interface TransitionResult {
@@ -87,6 +89,7 @@ export function checkBudget(state: RunMachineState): "ok" | "steps_exceeded" | "
 export function createRunMachine(
   runId: string,
   budget: RunBudget = {},
+  options?: { parentRunId?: string; workflowId?: string },
 ): RunMachineState {
   return {
     runId,
@@ -94,6 +97,8 @@ export function createRunMachine(
     stepCount: 0,
     totalCostUsd: 0,
     budget,
+    parentRunId: options?.parentRunId,
+    workflowId: options?.workflowId,
   };
 }
 
