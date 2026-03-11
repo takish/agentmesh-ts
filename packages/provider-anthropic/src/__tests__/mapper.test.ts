@@ -17,7 +17,7 @@ describe("extractSystemMessage", () => {
     const result = extractSystemMessage(messages);
     expect(result.system).toBe("Be helpful");
     expect(result.messages).toHaveLength(1);
-    expect(result.messages[0].role).toBe("user");
+    expect(result.messages.at(0)?.role).toBe("user");
   });
 
   it("returns undefined system when no system message", () => {
@@ -73,8 +73,8 @@ describe("toAnthropicMessages", () => {
       { role: "tool", content: '{"data": 42}', toolCallId: "tu_1" },
     ];
     const result = toAnthropicMessages(messages);
-    expect(result[0].role).toBe("user");
-    const content = (result[0] as { content: unknown[] }).content;
+    expect(result.at(0)?.role).toBe("user");
+    const content = (result.at(0) as { content: unknown[] }).content;
     expect(content[0]).toEqual({
       type: "tool_result",
       tool_use_id: "tu_1",

@@ -3,8 +3,8 @@ export type FinishReason = "stop" | "tool_calls" | "length" | "content_filter" |
 export interface ProviderMessage {
   role: "system" | "user" | "assistant" | "tool";
   content: string | null;
-  toolCallId?: string;
-  toolCalls?: ProviderToolCall[];
+  toolCallId?: string | undefined;
+  toolCalls?: ProviderToolCall[] | undefined;
 }
 
 export interface ProviderToolCall {
@@ -22,9 +22,9 @@ export interface ProviderToolSpec {
 export interface ProviderGenerateInput {
   model: string;
   messages: ProviderMessage[];
-  tools?: ProviderToolSpec[];
-  temperature?: number;
-  maxTokens?: number;
+  tools?: ProviderToolSpec[] | undefined;
+  temperature?: number | undefined;
+  maxTokens?: number | undefined;
 }
 
 export interface ProviderUsage {

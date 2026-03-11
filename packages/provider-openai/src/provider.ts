@@ -19,13 +19,15 @@ export class OpenAIProvider implements LlmProvider {
   }
 
   async generate(input: ProviderGenerateInput): Promise<ProviderGenerateOutput> {
-    const response = await this.client.chat.completions.create({
+    const params: OpenAI.ChatCompletionCreateParamsNonStreaming = {
       model: input.model,
       messages: toOpenAIMessages(input.messages),
-      tools: input.tools?.length ? toOpenAITools(input.tools) : undefined,
-      temperature: input.temperature,
-      max_tokens: input.maxTokens,
-    });
+    };
+    if (input.tools?.length) params.tools = toOpenAITools(input.tools);
+    if (input.temperature !== undefined) params.temperature = input.temperature;
+    if (input.maxTokens !== undefined) params.max_tokens = input.maxTokens;
+
+    const response = await this.client.chat.completions.create(params);
 
     const choice = response.choices[0];
     if (!choice) throw new Error("OpenAI returned no choices");

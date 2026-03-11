@@ -56,8 +56,8 @@ describe("ToolRegistry", () => {
 
     const contracts = registry.toContracts();
     expect(contracts).toHaveLength(1);
-    expect(contracts[0].name).toBe("a");
-    expect("execute" in contracts[0]).toBe(false);
+    expect(contracts.at(0)?.name).toBe("a");
+    expect(contracts.at(0) != null && "execute" in contracts.at(0)!).toBe(false);
   });
 
   it("toJsonSchemas returns LLM-ready format", () => {
@@ -66,7 +66,7 @@ describe("ToolRegistry", () => {
 
     const schemas = registry.toJsonSchemas();
     expect(schemas).toHaveLength(1);
-    expect(schemas[0].name).toBe("a");
-    expect(schemas[0].parameters).toBeDefined();
+    expect(schemas.at(0)?.name).toBe("a");
+    expect(schemas.at(0)?.parameters).toBeDefined();
   });
 });
