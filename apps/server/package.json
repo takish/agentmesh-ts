@@ -20,10 +20,12 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "lint": "eslint src/",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "@types/node": "^25.4.0"
+    "@types/node": "^25.4.0",
+    "vitest": "^4.0.18"
   }
 }
