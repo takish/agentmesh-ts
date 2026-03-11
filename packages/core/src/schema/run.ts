@@ -22,6 +22,8 @@ export const Run = z.object({
   totalTokensInput: z.number().int().nonnegative(),
   totalTokensOutput: z.number().int().nonnegative(),
   estimatedCostUsd: z.number().nonnegative(),
+  parentRunId: z.string().nullable().default(null),
+  workflowId: z.string().nullable().default(null),
   metadata: z.record(z.string(), z.unknown()).default({}),
 });
 export type Run = z.infer<typeof Run>;

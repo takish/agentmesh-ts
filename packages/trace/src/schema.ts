@@ -23,6 +23,8 @@ export const runs = pgTable(
     estimatedCostUsd: real("estimated_cost_usd").notNull().default(0),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
+    parentRunId: text("parent_run_id"),
+    workflowId: text("workflow_id"),
     metadataJson: jsonb("metadata_json").default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -30,6 +32,8 @@ export const runs = pgTable(
     index("idx_runs_status").on(table.status),
     index("idx_runs_created_at").on(table.createdAt),
     index("idx_runs_agent_name").on(table.agentName),
+    index("idx_runs_parent_run_id").on(table.parentRunId),
+    index("idx_runs_workflow_id").on(table.workflowId),
   ],
 );
 
