@@ -17,7 +17,13 @@ export const httpFetchTool = defineTool({
   sideEffectLevel: "external_read",
   timeoutMs: 10_000,
   retryPolicy: { maxAttempts: 2, backoffMs: 500 },
-  async execute(_input) {
-    throw new Error("http_fetch: not implemented — provide a concrete adapter");
+  async execute(input) {
+    const res = await fetch(input.url, { method: input.method });
+    const body = await res.text();
+    const headers: Record<string, string> = {};
+    res.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    return { status: res.status, body, headers };
   },
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { exec } from "node:child_process";
 import { defineTool } from "../define-tool.js";
 
 export const runShellTool = defineTool({
@@ -17,7 +18,23 @@ export const runShellTool = defineTool({
   permissionScope: "shell:exec",
   sideEffectLevel: "system_mutation",
   timeoutMs: 60_000,
-  async execute(_input) {
-    throw new Error("run_shell: not implemented — provide a concrete adapter");
+  async execute(input) {
+    return new Promise((resolve) => {
+      exec(
+        input.command,
+        {
+          cwd: input.cwd,
+          timeout: input.timeoutMs,
+          maxBuffer: 1024 * 1024,
+        },
+        (error: (Error & { code?: number }) | null, stdout: string, stderr: string) => {
+          resolve({
+            exitCode: error?.code ?? 0,
+            stdout,
+            stderr,
+          });
+        },
+      );
+    });
   },
 });

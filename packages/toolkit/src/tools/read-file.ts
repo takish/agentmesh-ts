@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { readFile } from "node:fs/promises";
 import { defineTool } from "../define-tool.js";
 
 export const readFileTool = defineTool({
@@ -15,7 +16,8 @@ export const readFileTool = defineTool({
   permissionScope: "file:read",
   sideEffectLevel: "read_only",
   timeoutMs: 5_000,
-  async execute(_input) {
-    throw new Error("read_file: not implemented — provide a concrete adapter");
+  async execute(input) {
+    const content = await readFile(input.path, { encoding: input.encoding as BufferEncoding });
+    return { content, size: Buffer.byteLength(content) };
   },
 });
