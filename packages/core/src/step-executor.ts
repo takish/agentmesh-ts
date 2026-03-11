@@ -1,3 +1,5 @@
+import { trace, SpanStatusCode } from "@opentelemetry/api";
+import type { Span } from "@opentelemetry/api";
 import type {
   LlmProvider,
   ProviderMessage,
@@ -8,6 +10,8 @@ import type {
 } from "./provider.js";
 import type { RunStatus } from "./schema/run.js";
 import type { ExecutionEvent, EventType } from "./schema/event.js";
+
+const tracer = trace.getTracer("@agentmesh/core");
 
 export interface RunSpawner {
   spawn(config: {
@@ -90,185 +94,242 @@ export class StepExecutor {
   ) {}
 
   async execute(input: StepInput): Promise<StepOutput> {
-    const stepId = `step_${input.runId}_${input.stepIndex}`;
-    const events: ExecutionEvent[] = [];
-    const toolCallResults: ToolCallResult[] = [];
-    let blocked = false;
-    let requiresApproval = false;
+    return tracer.startActiveSpan(`step.${input.stepIndex}`, {
+      attributes: {
+        "agentmesh.run_id": input.runId,
+        "agentmesh.step.index": input.stepIndex,
+        "agentmesh.step.model": input.model,
+      },
+    }, (stepSpan: Span): Promise<StepOutput> => {
+      return this._executeStep(input, stepSpan);
+    });
+  }
 
-    events.push(emitEvent(input.runId, stepId, "step.started", { index: input.stepIndex }));
+  private async _executeStep(input: StepInput, stepSpan: Span): Promise<StepOutput> {
+      const stepId = `step_${input.runId}_${input.stepIndex}`;
+      const events: ExecutionEvent[] = [];
+      const toolCallResults: ToolCallResult[] = [];
+      let blocked = false;
+      let requiresApproval = false;
 
-    // 1. Call LLM
-    events.push(emitEvent(input.runId, stepId, "llm.called", { model: input.model }));
+      events.push(emitEvent(input.runId, stepId, "step.started", { index: input.stepIndex }));
 
-    let llmOutput: ProviderGenerateOutput;
-    try {
-      llmOutput = await this.provider.generate({
-        model: input.model,
-        messages: input.messages,
-        tools: this.toolHandler.toToolSpecs(),
-      });
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      events.push(emitEvent(input.runId, stepId, "step.failed", { error }));
-      return {
-        messages: input.messages,
-        finishReason: "error",
-        usage: { inputTokens: 0, outputTokens: 0 },
-        toolCallResults: [],
-        events,
-        blocked: false,
-        requiresApproval: false,
-      };
-    }
+      // 1. Call LLM
+      events.push(emitEvent(input.runId, stepId, "llm.called", { model: input.model }));
 
-    events.push(emitEvent(input.runId, stepId, "llm.responded", {
-      finishReason: llmOutput.finishReason,
-      usage: llmOutput.usage,
-    }));
-
-    const updatedMessages = [...input.messages, llmOutput.message];
-
-    // 2. If no tool calls, return
-    if (llmOutput.finishReason !== "tool_calls" || !llmOutput.message.toolCalls?.length) {
-      return {
-        messages: updatedMessages,
-        finishReason: llmOutput.finishReason,
-        usage: llmOutput.usage,
-        toolCallResults: [],
-        events,
-        blocked: false,
-        requiresApproval: false,
-      };
-    }
-
-    // 3. Process tool calls
-    const toolMessages: ProviderMessage[] = [];
-
-    for (const tc of llmOutput.message.toolCalls) {
-      let parsedInput: Record<string, unknown>;
+      let llmOutput: ProviderGenerateOutput;
       try {
-        parsedInput = JSON.parse(tc.arguments) as Record<string, unknown>;
-      } catch {
-        toolCallResults.push({
-          toolName: tc.name,
-          input: {},
-          output: null,
-          durationMs: 0,
-          status: "failed",
-          error: `Invalid tool arguments JSON: ${tc.arguments}`,
+        llmOutput = await tracer.startActiveSpan("llm.generate", {
+          attributes: { "agentmesh.llm.model": input.model },
+        }, async (llmSpan: Span) => {
+          try {
+            const result = await this.provider.generate({
+              model: input.model,
+              messages: input.messages,
+              tools: this.toolHandler.toToolSpecs(),
+            });
+            llmSpan.setAttributes({
+              "agentmesh.llm.input_tokens": result.usage.inputTokens,
+              "agentmesh.llm.output_tokens": result.usage.outputTokens,
+              "agentmesh.llm.finish_reason": result.finishReason,
+            });
+            llmSpan.end();
+            return result;
+          } catch (err) {
+            llmSpan.setStatus({ code: SpanStatusCode.ERROR, message: err instanceof Error ? err.message : String(err) });
+            llmSpan.end();
+            throw err;
+          }
         });
-        toolMessages.push({
-          role: "tool",
-          content: JSON.stringify({ error: "Invalid tool arguments JSON" }),
-          toolCallId: tc.id,
-        });
-        events.push(emitEvent(input.runId, stepId, "step.failed", { toolName: tc.name, error: "Invalid JSON arguments" }));
-        continue;
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        events.push(emitEvent(input.runId, stepId, "step.failed", { error }));
+        stepSpan.setStatus({ code: SpanStatusCode.ERROR, message: error });
+        stepSpan.end();
+        return {
+          messages: input.messages,
+          finishReason: "error",
+          usage: { inputTokens: 0, outputTokens: 0 },
+          toolCallResults: [],
+          events,
+          blocked: false,
+          requiresApproval: false,
+        };
       }
 
-      events.push(emitEvent(input.runId, stepId, "tool.requested", { toolName: tc.name, input: parsedInput }));
+      events.push(emitEvent(input.runId, stepId, "llm.responded", {
+        finishReason: llmOutput.finishReason,
+        usage: llmOutput.usage,
+      }));
 
-      // 3a. Policy check
-      if (this.policyChecker) {
-        const decision = await this.policyChecker.evaluate({
-          toolName: tc.name,
-          permissionScope: "",
-          sideEffectLevel: "",
-          runId: input.runId,
-          currentStepCount: input.currentStepCount,
-          totalCostUsd: input.totalCostUsd,
-        });
+      stepSpan.setAttributes({
+        "agentmesh.step.finish_reason": llmOutput.finishReason,
+        "agentmesh.step.input_tokens": llmOutput.usage.inputTokens,
+        "agentmesh.step.output_tokens": llmOutput.usage.outputTokens,
+      });
 
-        events.push(emitEvent(input.runId, stepId, "policy.checked", {
-          toolName: tc.name,
-          allowed: decision.allowed,
-          requiresApproval: decision.requiresApproval,
-        }));
+      const updatedMessages = [...input.messages, llmOutput.message];
 
-        if (!decision.allowed) {
-          blocked = true;
+      // 2. If no tool calls, return
+      if (llmOutput.finishReason !== "tool_calls" || !llmOutput.message.toolCalls?.length) {
+        stepSpan.end();
+        return {
+          messages: updatedMessages,
+          finishReason: llmOutput.finishReason,
+          usage: llmOutput.usage,
+          toolCallResults: [],
+          events,
+          blocked: false,
+          requiresApproval: false,
+        };
+      }
+
+      // 3. Process tool calls
+      const toolMessages: ProviderMessage[] = [];
+
+      for (const tc of llmOutput.message.toolCalls) {
+        let parsedInput: Record<string, unknown>;
+        try {
+          parsedInput = JSON.parse(tc.arguments) as Record<string, unknown>;
+        } catch {
+          toolCallResults.push({
+            toolName: tc.name,
+            input: {},
+            output: null,
+            durationMs: 0,
+            status: "failed",
+            error: `Invalid tool arguments JSON: ${tc.arguments}`,
+          });
+          toolMessages.push({
+            role: "tool",
+            content: JSON.stringify({ error: "Invalid tool arguments JSON" }),
+            toolCallId: tc.id,
+          });
+          events.push(emitEvent(input.runId, stepId, "step.failed", { toolName: tc.name, error: "Invalid JSON arguments" }));
+          continue;
+        }
+
+        events.push(emitEvent(input.runId, stepId, "tool.requested", { toolName: tc.name, input: parsedInput }));
+
+        // 3a. Policy check
+        if (this.policyChecker) {
+          const decision = await this.policyChecker.evaluate({
+            toolName: tc.name,
+            permissionScope: "",
+            sideEffectLevel: "",
+            runId: input.runId,
+            currentStepCount: input.currentStepCount,
+            totalCostUsd: input.totalCostUsd,
+          });
+
+          stepSpan.addEvent("policy.checked", {
+            "agentmesh.tool.name": tc.name,
+            "agentmesh.policy.allowed": decision.allowed,
+            "agentmesh.policy.requires_approval": decision.requiresApproval,
+          });
+
+          events.push(emitEvent(input.runId, stepId, "policy.checked", {
+            toolName: tc.name,
+            allowed: decision.allowed,
+            requiresApproval: decision.requiresApproval,
+          }));
+
+          if (!decision.allowed) {
+            blocked = true;
+            toolCallResults.push({
+              toolName: tc.name,
+              input: parsedInput,
+              output: null,
+              durationMs: 0,
+              status: "blocked",
+              error: decision.reason,
+            });
+            toolMessages.push({
+              role: "tool",
+              content: JSON.stringify({ error: `Policy blocked: ${decision.reason}` }),
+              toolCallId: tc.id,
+            });
+            continue;
+          }
+
+          if (decision.requiresApproval) {
+            requiresApproval = true;
+          }
+        }
+
+        // 3b. If requires approval, don't execute yet
+        if (requiresApproval) {
           toolCallResults.push({
             toolName: tc.name,
             input: parsedInput,
             output: null,
             durationMs: 0,
             status: "blocked",
-            error: decision.reason,
-          });
-          toolMessages.push({
-            role: "tool",
-            content: JSON.stringify({ error: `Policy blocked: ${decision.reason}` }),
-            toolCallId: tc.id,
+            error: "Requires approval",
           });
           continue;
         }
 
-        if (decision.requiresApproval) {
-          requiresApproval = true;
-        }
+        // 3c. Execute tool
+        await tracer.startActiveSpan(`tool.${tc.name}`, {
+          attributes: { "agentmesh.tool.name": tc.name },
+        }, async (toolSpan: Span) => {
+          try {
+            const result = await this.toolHandler.execute(tc.name, parsedInput);
+            toolCallResults.push({
+              toolName: tc.name,
+              input: parsedInput,
+              output: result.output,
+              durationMs: result.durationMs,
+              status: "succeeded",
+            });
+            toolMessages.push({
+              role: "tool",
+              content: JSON.stringify(result.output),
+              toolCallId: tc.id,
+            });
+            toolSpan.setAttribute("agentmesh.tool.duration_ms", result.durationMs);
+            events.push(emitEvent(input.runId, stepId, "tool.completed", {
+              toolName: tc.name,
+              durationMs: result.durationMs,
+            }));
+          } catch (err) {
+            const error = err instanceof Error ? err.message : String(err);
+            toolCallResults.push({
+              toolName: tc.name,
+              input: parsedInput,
+              output: null,
+              durationMs: 0,
+              status: "failed",
+              error,
+            });
+            toolMessages.push({
+              role: "tool",
+              content: JSON.stringify({ error }),
+              toolCallId: tc.id,
+            });
+            toolSpan.setStatus({ code: SpanStatusCode.ERROR, message: error });
+            events.push(emitEvent(input.runId, stepId, "step.failed", { toolName: tc.name, error }));
+          }
+          toolSpan.end();
+        });
       }
 
-      // 3b. If requires approval, don't execute yet
-      if (requiresApproval) {
-        toolCallResults.push({
-          toolName: tc.name,
-          input: parsedInput,
-          output: null,
-          durationMs: 0,
-          status: "blocked",
-          error: "Requires approval",
-        });
-        continue;
-      }
+      stepSpan.setAttributes({
+        "agentmesh.step.blocked": blocked,
+        "agentmesh.step.tool_calls": toolCallResults.length,
+      });
+      stepSpan.end();
 
-      // 3c. Execute tool
-      try {
-        const result = await this.toolHandler.execute(tc.name, parsedInput);
-        toolCallResults.push({
-          toolName: tc.name,
-          input: parsedInput,
-          output: result.output,
-          durationMs: result.durationMs,
-          status: "succeeded",
-        });
-        toolMessages.push({
-          role: "tool",
-          content: JSON.stringify(result.output),
-          toolCallId: tc.id,
-        });
-        events.push(emitEvent(input.runId, stepId, "tool.completed", {
-          toolName: tc.name,
-          durationMs: result.durationMs,
-        }));
-      } catch (err) {
-        const error = err instanceof Error ? err.message : String(err);
-        toolCallResults.push({
-          toolName: tc.name,
-          input: parsedInput,
-          output: null,
-          durationMs: 0,
-          status: "failed",
-          error,
-        });
-        toolMessages.push({
-          role: "tool",
-          content: JSON.stringify({ error }),
-          toolCallId: tc.id,
-        });
-        events.push(emitEvent(input.runId, stepId, "step.failed", { toolName: tc.name, error }));
-      }
-    }
-
-    return {
-      messages: [...updatedMessages, ...toolMessages],
-      finishReason: requiresApproval ? "stop" : llmOutput.finishReason,
-      usage: llmOutput.usage,
-      toolCallResults,
-      events,
-      blocked,
-      requiresApproval,
-    };
+      return {
+        messages: [...updatedMessages, ...toolMessages],
+        finishReason: requiresApproval ? "stop" as const : llmOutput.finishReason,
+        usage: llmOutput.usage,
+        toolCallResults,
+        events,
+        blocked,
+        requiresApproval,
+      };
   }
 }
 
