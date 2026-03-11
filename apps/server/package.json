@@ -1,0 +1,22 @@
+{
+  "name": "@agentmesh/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "description": "Fastify REST API server",
+  "dependencies": {
+    "@agentmesh/core": "workspace:*",
+    "@agentmesh/toolkit": "workspace:*",
+    "@agentmesh/policy": "workspace:*",
+    "@agentmesh/trace": "workspace:*",
+    "@agentmesh/ui-contracts": "workspace:*"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  }
+}

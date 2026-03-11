@@ -1,0 +1,17 @@
+{
+  "name": "@agentmesh/policy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "description": "Policy engine for agent governance",
+  "dependencies": {
+    "@agentmesh/core": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  }
+}
