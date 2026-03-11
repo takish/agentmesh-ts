@@ -1,0 +1,17 @@
+{
+  "name": "@agentmesh/example-research-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Example research agent",
+  "dependencies": {
+    "@agentmesh/core": "workspace:*",
+    "@agentmesh/toolkit": "workspace:*"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  }
+}
