@@ -132,7 +132,7 @@ describe("fromAnthropicResponse edge cases", () => {
       stop_reason: "end_turn" as const,
       stop_sequence: null,
       usage: { input_tokens: 5, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-    } as Anthropic.Message;
+    } as unknown as Anthropic.Message;
     const result = fromAnthropicResponse(response);
     expect(result.message.content).toBeNull();
     expect(result.finishReason).toBe("stop");

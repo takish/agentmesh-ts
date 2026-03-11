@@ -6,7 +6,19 @@ import type {
   ProviderUsage,
   FinishReason,
 } from "./provider.js";
+import type { RunStatus } from "./schema/run.js";
 import type { ExecutionEvent, EventType } from "./schema/event.js";
+
+export interface RunSpawner {
+  spawn(config: {
+    agentName: string;
+    goal: string;
+    parentRunId: string;
+    workflowId?: string | undefined;
+  }): Promise<{ runId: string }>;
+
+  waitForCompletion(runId: string): Promise<{ status: RunStatus; output: unknown }>;
+}
 
 export interface ToolHandler {
   execute(toolName: string, input: Record<string, unknown>): Promise<{ output: unknown; durationMs: number }>;
