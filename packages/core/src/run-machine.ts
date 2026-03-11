@@ -3,8 +3,9 @@ import type { EventType, ExecutionEvent } from "./schema/event.js";
 
 const TRANSITIONS: Record<RunStatus, readonly RunStatus[]> = {
   queued: ["running", "cancelled"],
-  running: ["waiting_approval", "succeeded", "failed", "cancelled"],
+  running: ["waiting_approval", "waiting_child_runs", "succeeded", "failed", "cancelled"],
   waiting_approval: ["running", "cancelled"],
+  waiting_child_runs: ["running", "failed", "cancelled"],
   succeeded: [],
   failed: [],
   cancelled: [],
@@ -121,6 +122,9 @@ export function _resetEventSeq(): void {
 function resolveEventType(from: RunStatus, to: RunStatus): EventType {
   if (to === "running" && from === "queued") return "run.started";
   if (to === "running" && from === "waiting_approval") return "run.started";
+  if (to === "running" && from === "waiting_child_runs") return "run.child_completed";
+  if (to === "waiting_child_runs") return "run.spawned";
+  if (to === "failed" && from === "waiting_child_runs") return "run.child_failed";
   if (to === "succeeded" || to === "failed" || to === "cancelled") return "run.completed";
   return "run.created";
 }

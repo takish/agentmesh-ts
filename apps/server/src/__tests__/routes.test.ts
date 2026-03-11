@@ -35,7 +35,7 @@ type MockRepos = ReturnType<typeof createMockRepos>;
 
 function buildApp(deps: MockRepos) {
   const app = Fastify();
-  registerRunRoutes(app, deps as Parameters<typeof registerRunRoutes>[1]);
+  registerRunRoutes(app, deps as unknown as Parameters<typeof registerRunRoutes>[1]);
   return app;
 }
 
